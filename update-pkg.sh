@@ -29,6 +29,7 @@ echo "14) bbb-playback"
 echo ""
 
 read -p "Enter the number of the package (1-27): " PKG_NUM </dev/tty
+PKG_NUM=$(echo "$PKG_NUM" | tr -d '\r ')
 
 case $PKG_NUM in
     1) PKG_NAME="bbb-apps-akka" ;;
@@ -74,6 +75,7 @@ if [ $? -eq 0 ]; then
     echo "✅ Successfully updated $PKG_NAME!"
     echo ""
     read -p "Do you want to restart BigBlueButton to apply changes? (y/n): " ans_restart </dev/tty
+ans_restart=$(echo "$ans_restart" | tr -d '\r ')
     if [[ "$ans_restart" =~ ^[Yy]$ ]]; then
         echo "Restarting BigBlueButton..."
         bbb-conf --restart

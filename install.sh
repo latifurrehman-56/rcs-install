@@ -144,6 +144,7 @@ main() {
   echo "==============================================================="
   
   read -p "Enter Private Repository URL (e.g. user:pass@repo.rgstech.center): " PACKAGE_REPOSITORY </dev/tty
+  PACKAGE_REPOSITORY=$(echo "$PACKAGE_REPOSITORY" | tr -d '\r ')
   if [ -z "$PACKAGE_REPOSITORY" ]; then
       err "Repository URL cannot be empty!"
   fi
@@ -152,28 +153,34 @@ main() {
   VERSION="noble-400"
 
   read -p "Enter Server Hostname (e.g. bbb.rgstech.center): " HOST </dev/tty
+  HOST=$(echo "$HOST" | tr -d '\r ')
   if [ -z "$HOST" ]; then
       err "Hostname cannot be empty!"
   fi
 
   read -p "Enter Email for SSL Certificate (e.g. admin@rgstech.center): " EMAIL </dev/tty
+  EMAIL=$(echo "$EMAIL" | tr -d '\r ')
   if [ -z "$EMAIL" ]; then
       err "Email cannot be empty!"
   fi
 
   read -p "Do you want to install Greenlight v3 (Room Manager UI)? (y/n): " ans_g </dev/tty
+  ans_g=$(echo "$ans_g" | tr -d '\r ')
   if [[ "$ans_g" =~ ^[Yy]$ ]]; then
       GREENLIGHT=true
       GL_DEFAULT_PATH=/
   fi
 
   read -p "Do you want to install Coturn (TURN server for better WebRTC)? (y/n): " ans_c </dev/tty
+  ans_c=$(echo "$ans_c" | tr -d '\r ')
   if [[ "$ans_c" =~ ^[Yy]$ ]]; then
       read -p "Enter Coturn Hostname (e.g. turn.rgstech.center): " COTURN </dev/tty
+  COTURN=$(echo "$COTURN" | tr -d '\r ')
       check_coturn "$COTURN"
   fi
 
   read -p "Do you want to setup UFW Firewall rules? (y/n): " ans_w </dev/tty
+  ans_w=$(echo "$ans_w" | tr -d '\r ')
   if [[ "$ans_w" =~ ^[Yy]$ ]]; then
       SSH_PORT=$(grep Port /etc/ssh/ssh_config | grep -v \# | sed 's/[^0-9]*//g')
       if [[ -n "$SSH_PORT" && "$SSH_PORT" != "22" ]]; then
