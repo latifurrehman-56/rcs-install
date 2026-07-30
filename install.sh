@@ -143,7 +143,7 @@ main() {
   echo "  Welcome to the RGS Tech Private BigBlueButton Installer"
   echo "==============================================================="
   
-  read -p "Enter Private Repository URL (e.g. user:pass@repo.rgstech.center): " PACKAGE_REPOSITORY
+  read -p "Enter Private Repository URL (e.g. user:pass@repo.rgstech.center): " PACKAGE_REPOSITORY </dev/tty
   if [ -z "$PACKAGE_REPOSITORY" ]; then
       err "Repository URL cannot be empty!"
   fi
@@ -151,29 +151,29 @@ main() {
   # Automatically setting version as requested
   VERSION="noble-400"
 
-  read -p "Enter Server Hostname (e.g. bbb.rgstech.center): " HOST
+  read -p "Enter Server Hostname (e.g. bbb.rgstech.center): " HOST </dev/tty
   if [ -z "$HOST" ]; then
       err "Hostname cannot be empty!"
   fi
 
-  read -p "Enter Email for SSL Certificate (e.g. admin@rgstech.center): " EMAIL
+  read -p "Enter Email for SSL Certificate (e.g. admin@rgstech.center): " EMAIL </dev/tty
   if [ -z "$EMAIL" ]; then
       err "Email cannot be empty!"
   fi
 
-  read -p "Do you want to install Greenlight v3 (Room Manager UI)? (y/n): " ans_g
+  read -p "Do you want to install Greenlight v3 (Room Manager UI)? (y/n): " ans_g </dev/tty
   if [[ "$ans_g" =~ ^[Yy]$ ]]; then
       GREENLIGHT=true
       GL_DEFAULT_PATH=/
   fi
 
-  read -p "Do you want to install Coturn (TURN server for better WebRTC)? (y/n): " ans_c
+  read -p "Do you want to install Coturn (TURN server for better WebRTC)? (y/n): " ans_c </dev/tty
   if [[ "$ans_c" =~ ^[Yy]$ ]]; then
-      read -p "Enter Coturn Hostname (e.g. turn.rgstech.center): " COTURN
+      read -p "Enter Coturn Hostname (e.g. turn.rgstech.center): " COTURN </dev/tty
       check_coturn "$COTURN"
   fi
 
-  read -p "Do you want to setup UFW Firewall rules? (y/n): " ans_w
+  read -p "Do you want to setup UFW Firewall rules? (y/n): " ans_w </dev/tty
   if [[ "$ans_w" =~ ^[Yy]$ ]]; then
       SSH_PORT=$(grep Port /etc/ssh/ssh_config | grep -v \# | sed 's/[^0-9]*//g')
       if [[ -n "$SSH_PORT" && "$SSH_PORT" != "22" ]]; then
