@@ -642,7 +642,19 @@ check_version() {
   # curl -fsSL "https://$PACKAGE_REPOSITORY/repo/bigbluebutton.asc" | sudo tee /etc/apt/keyrings/bigbluebutton.asc
   
   # CHANGED FOR PRIVATE REPO: We use [trusted=yes] and point to our flat repository (./)
-  echo "deb [trusted=yes] https://$PACKAGE_REPOSITORY/ ./" > /etc/apt/sources.list.d/bigbluebutton.list
+  if [[ "$PACKAGE_REPOSITORY" == *"@"* ]]; then
+    AUTH_PART="${PACKAGE_REPOSITORY%@*}"
+    DOMAIN_PART="${PACKAGE_REPOSITORY##*@}"
+    USER_PART="${AUTH_PART%%:*}"
+    PASS_PART="${AUTH_PART#*:}"
+    
+    echo "machine $DOMAIN_PART login $USER_PART password $PASS_PART" > /etc/apt/auth.conf.d/bbb.conf
+    chmod 600 /etc/apt/auth.conf.d/bbb.conf
+    
+    echo "deb [trusted=yes] https://$DOMAIN_PART/ ./" > /etc/apt/sources.list.d/bigbluebutton.list
+  else
+    echo "deb [trusted=yes] https://$PACKAGE_REPOSITORY/ ./" > /etc/apt/sources.list.d/bigbluebutton.list
+  fi
 }
 
 check_host() {
