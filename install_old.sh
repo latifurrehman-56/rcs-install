@@ -138,13 +138,7 @@ HERE
 
 main() {
   export DEBIAN_FRONTEND=noninteractive
-  echo "==============================================================="
-  echo "  Welcome to the RGS Tech Private BigBlueButton Installer"
-  echo "==============================================================="
-  read -p "Enter FTP/Repo Username (e.g. rgs-classes-software): " REPO_USER </dev/tty
-  read -s -p "Enter FTP/Repo Password: " REPO_PASS </dev/tty
-  echo ""
-  PACKAGE_REPOSITORY="${REPO_USER}:${REPO_PASS}@repo.rgstech.center"
+  PACKAGE_REPOSITORY=ubuntu.bigbluebutton.org
   LETS_ENCRYPT_OPTIONS=(--webroot --non-interactive)
   SOURCES_FETCHED=false
   GL3_DIR=~/greenlight-v3
@@ -701,8 +695,12 @@ need_ppa() {
 check_version() {
   if ! echo "$1" | grep -Eq "noble-4"; then err "This script can only install BigBlueButton 4.0 and is meant to be run on Ubuntu 24.04 (noble) server."; fi
   DISTRO=${1%%-*}
+  if ! wget -qS --spider "https://$PACKAGE_REPOSITORY/$1/dists/bigbluebutton-$DISTRO/Release.gpg" > /dev/null 2>&1; then
+    err "Unable to locate packages for $1 at $PACKAGE_REPOSITORY."
+  fi
   check_root
-  echo "deb [trusted=yes] https://$PACKAGE_REPOSITORY ./" > /etc/apt/sources.list.d/bigbluebutton.list
+  curl -fsSL "https://$PACKAGE_REPOSITORY/repo/bigbluebutton.asc" | sudo tee /etc/apt/keyrings/bigbluebutton.asc
+  echo "deb [signed-by=/etc/apt/keyrings/bigbluebutton.asc] https://$PACKAGE_REPOSITORY/$VERSION bigbluebutton-$DISTRO main" > /etc/apt/sources.list.d/bigbluebutton.list
 }
 
 check_host() {
@@ -1553,10 +1551,11 @@ install_ssl() {
 
   if [ ! -f "/etc/letsencrypt/live/$HOST/fullchain.pem" ]; then
     rm -f /tmp/bigbluebutton.bak
-    if [ -f /etc/nginx/sites-available/bigbluebutton ]; then
-      cp /etc/nginx/sites-available/bigbluebutton /tmp/bigbluebutton.bak
-    fi
-    cat <<HERE > /etc/nginx/sites-available/bigbluebutton
+    if ! grep -q "$HOST" /etc/nginx/sites-available/bigbluebutton; then  # make sure we can do the challenge
+      if [ -f /etc/nginx/sites-available/bigbluebutton ]; then
+        cp /etc/nginx/sites-available/bigbluebutton /tmp/bigbluebutton.bak
+      fi
+      cat <<HERE > /etc/nginx/sites-available/bigbluebutton
 server_tokens off;
 server {
   listen 80;
@@ -1572,7 +1571,8 @@ server {
   }
 }
 HERE
-    systemctl restart nginx
+      systemctl restart nginx
+    fi
 
     if [ -z "$PROVIDED_CERTIFICATE" ]; then
       if ! certbot --email "$EMAIL" --agree-tos --rsa-key-size 4096 -w /var/www/bigbluebutton-default/assets/ \
