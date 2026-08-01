@@ -702,7 +702,10 @@ check_version() {
   if ! echo "$1" | grep -Eq "noble-4"; then err "This script can only install BigBlueButton 4.0 and is meant to be run on Ubuntu 24.04 (noble) server."; fi
   DISTRO=${1%%-*}
   check_root
-  echo "deb [trusted=yes] https://$PACKAGE_REPOSITORY ./" > /etc/apt/sources.list.d/bigbluebutton.list
+  mkdir -p /etc/apt/auth.conf.d /etc/apt/sources.list.d
+  echo "machine repo.rgstech.center login ${REPO_USER} password ${REPO_PASS}" > /etc/apt/auth.conf.d/rgstech.conf
+  chmod 600 /etc/apt/auth.conf.d/rgstech.conf
+  echo "deb [trusted=yes] https://repo.rgstech.center ./" > /etc/apt/sources.list.d/bigbluebutton.list
 }
 
 check_host() {

@@ -18,11 +18,11 @@ REPO_PASS=$(echo "$REPO_PASS" | tr -d '\r ')
 echo ""
 echo ""
 
-PACKAGE_REPOSITORY="${REPO_USER}:${REPO_PASS}@repo.rgstech.center"
-
-echo "Configuring repository sources with provided credentials..."
-mkdir -p /etc/apt/sources.list.d
-echo "deb [trusted=yes] https://$PACKAGE_REPOSITORY ./" > /etc/apt/sources.list.d/bigbluebutton.list
+echo "Configuring repository authentication and sources..."
+mkdir -p /etc/apt/auth.conf.d /etc/apt/sources.list.d
+echo "machine repo.rgstech.center login ${REPO_USER} password ${REPO_PASS}" > /etc/apt/auth.conf.d/rgstech.conf
+chmod 600 /etc/apt/auth.conf.d/rgstech.conf
+echo "deb [trusted=yes] https://repo.rgstech.center ./" > /etc/apt/sources.list.d/bigbluebutton.list
 
 echo ""
 echo "Select the package you want to update/reinstall:"
