@@ -11,18 +11,23 @@ echo "==============================================================="
 echo "  RGS Tech - Specific Package Updater (Ubuntu)"
 echo "==============================================================="
 echo ""
-read -p "Enter FTP/Repo Username (e.g. rgs-classes-software): " REPO_USER </dev/tty
-REPO_USER=$(echo "$REPO_USER" | tr -d '\r ')
-read -s -p "Enter FTP/Repo Password: " REPO_PASS </dev/tty
-REPO_PASS=$(echo "$REPO_PASS" | tr -d '\r ')
-echo ""
-echo ""
+if [ -s /etc/apt/auth.conf.d/rgstech.conf ]; then
+  echo "✅ Existing repository authentication found in /etc/apt/auth.conf.d/rgstech.conf. Reusing saved credentials!"
+  echo ""
+else
+  read -p "Enter FTP/Repo Username (e.g. rgs-classes-software): " REPO_USER </dev/tty
+  REPO_USER=$(echo "$REPO_USER" | tr -d '\r ')
+  read -s -p "Enter FTP/Repo Password: " REPO_PASS </dev/tty
+  REPO_PASS=$(echo "$REPO_PASS" | tr -d '\r ')
+  echo ""
+  echo ""
 
-echo "Configuring repository authentication and sources..."
-mkdir -p /etc/apt/auth.conf.d /etc/apt/sources.list.d
-echo "machine repo.rgstech.center login ${REPO_USER} password ${REPO_PASS}" > /etc/apt/auth.conf.d/rgstech.conf
-chmod 600 /etc/apt/auth.conf.d/rgstech.conf
-echo "deb [trusted=yes] https://repo.rgstech.center ./" > /etc/apt/sources.list.d/bigbluebutton.list
+  echo "Configuring repository authentication and sources..."
+  mkdir -p /etc/apt/auth.conf.d /etc/apt/sources.list.d
+  echo "machine repo.rgstech.center login ${REPO_USER} password ${REPO_PASS}" > /etc/apt/auth.conf.d/rgstech.conf
+  chmod 600 /etc/apt/auth.conf.d/rgstech.conf
+  echo "deb [trusted=yes] https://repo.rgstech.center ./" > /etc/apt/sources.list.d/bigbluebutton.list
+fi
 
 echo ""
 echo "Select the package you want to update/reinstall:"

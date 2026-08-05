@@ -1606,10 +1606,12 @@ server {
 
   access_log  /var/log/nginx/bigbluebutton.access.log;
 
-  # BigBlueButton landing page.
+  # RGS Management App (React Portal) landing page.
   location / {
-    root   /var/www/bigbluebutton-default/assets;
-    try_files \$uri @bbb-fe;
+    root /var/www/rgs-app/frontend/dist;
+    index index.html index.htm;
+    try_files \$uri \$uri/ /index.html;
+    expires 1m;
   }
 }
 HERE
@@ -1687,10 +1689,12 @@ server {
   # files, so \$scheme can be overridden in reverse-proxy configurations.
   set \$real_scheme "https";
 
-  # BigBlueButton landing page.
+  # RGS Management App (React Portal) landing page.
   location / {
-    root   /var/www/bigbluebutton-default/assets;
-    try_files \$uri @bbb-fe;
+    root /var/www/rgs-app/frontend/dist;
+    index index.html index.htm;
+    try_files \$uri \$uri/ /index.html;
+    expires 1m;
   }
 
   # Include specific rules for record and playback
@@ -1748,10 +1752,12 @@ server {
   # files, so \$scheme can be overridden in reverse-proxy configurations.
   set \$real_scheme \$scheme;
 
-  # BigBlueButton landing page.
+  # RGS Management App (React Portal) landing page.
   location / {
-    root   /var/www/bigbluebutton-default/assets;
-    try_files \$uri @bbb-fe;
+    root /var/www/rgs-app/frontend/dist;
+    index index.html index.htm;
+    try_files \$uri \$uri/ /index.html;
+    expires 1m;
   }
 
   # Include specific rules for record and playback
