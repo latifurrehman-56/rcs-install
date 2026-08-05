@@ -58,8 +58,9 @@ SSL / CERTIFICATES:
   -d                     Skip Let's Encrypt; use certificates from /local/certs/
 
 ADD-ON APPLICATIONS:
-  -g                     Install Greenlight v3 (room manager web UI)
+  -g                     Install Greenlight v3 (room manager UI; excludes RGS Management App)
   -k                     Install Keycloak v20 (external auth for Greenlight; implies -g)
+  -E                     Exclude RGS Management App (RGS App is installed by default unless -g or -E is passed)
   -t <key>:<secret>      Install BigBlueButton LTI framework with initial consumer
                          credentials. Re-run with the same <key> to rotate its
                          secret; a new <key> adds another consumer.
@@ -152,14 +153,20 @@ main() {
   NGINX_FILES_DEST=/usr/share/bigbluebutton/nginx
   IMAGE_MAGICK_DIR=/etc/ImageMagick-6
   OVERWRITE_IMAGE_MAGICK_POLICY=true
+  INSTALL_RGS_APP=true
+  EXCLUDE_RGS_EXPLICIT=false
   CR_TMPFILE=$(mktemp /tmp/carriage-return.XXXXXX)
   printf '\n' > "$CR_TMPFILE"
 
   need_x64
 
-  while builtin getopts "hs:r:c:v:e:p:m:t:xgadwjikb" opt "${@}"; do
+  while builtin getopts "hs:r:c:v:e:p:m:t:xgadwjikbE" opt "${@}"; do
 
     case $opt in
+      E)
+        INSTALL_RGS_APP=false
+        EXCLUDE_RGS_EXPLICIT=true
+        ;;
       h)
         usage
         exit 0
@@ -264,6 +271,15 @@ main() {
     esac
   done
 
+  if [ "$GREENLIGHT" = true ]; then
+    if [ "$EXCLUDE_RGS_EXPLICIT" = true ]; then
+      echo "[ℹ️] Exclude flag (-E) passed with Greenlight (-g): Only Greenlight will be installed as frontend."
+    else
+      echo "[ℹ️] Greenlight (-g) selected: Automatically excluding RGS Management App. (Only one frontend can be active per server)."
+      INSTALL_RGS_APP=false
+    fi
+  fi
+
   if [ -n "$HOST" ]; then
     check_host "$HOST"
   fi
@@ -334,10 +350,26 @@ main() {
 
   need_pkg bigbluebutton
 
+  if [ "$INSTALL_RGS_APP" = true ]; then
+    echo "[ℹ️] Installing RGS Management App (React Portal & Backend)..."
+    need_pkg rgs-management-app
+    # Remove default welcome screen to allow RGS Management App to control @bbb-fe routing
+    rm -f /usr/share/bigbluebutton/nginx/default-fe.nginx 2>/dev/null || true
+  else
+    echo "[ℹ️] Skipping RGS Management App installation (Exclusion requested or Greenlight active)."
+    if dpkg -s rgs-management-app >/dev/null 2>&1; then
+      echo "[ℹ️] Removing previously installed RGS Management App due to exclusion flag / Greenlight selection..."
+      apt-get remove -y rgs-management-app || true
+      rm -f /etc/bigbluebutton/nginx/rgs-app.nginx || true
+    fi
+  fi
+
   # Resolve any pending DPKG config file conflicts (.dpkg-new/.dpkg-dist)
   find /etc/nginx /etc/bigbluebutton /usr/share/bigbluebutton /var/www -type f -name "*.dpkg-new" -exec sh -c 'mv -f "$1" "${1%.dpkg-new}"' _ {} \; 2>/dev/null || true
   find /etc/nginx /etc/bigbluebutton /usr/share/bigbluebutton /var/www -type f -name "*.dpkg-dist" -exec sh -c 'mv -f "$1" "${1%.dpkg-dist}"' _ {} \; 2>/dev/null || true
-  rm -f /etc/bigbluebutton/nginx/*greenlight*.nginx /usr/share/bigbluebutton/nginx/*greenlight*.nginx /etc/nginx/sites-enabled/*greenlight* /etc/nginx/sites-available/*greenlight* 2>/dev/null || true
+  if [ "$GREENLIGHT" != true ]; then
+    rm -f /etc/bigbluebutton/nginx/*greenlight*.nginx /usr/share/bigbluebutton/nginx/*greenlight*.nginx /etc/nginx/sites-enabled/*greenlight* /etc/nginx/sites-available/*greenlight* 2>/dev/null || true
+  fi
   systemctl reload nginx 2>/dev/null || true
 
   if [ -f /usr/share/bbb-web/WEB-INF/classes/bigbluebutton.properties ]; then
@@ -1743,9 +1775,10 @@ HERE
       rm /etc/nginx/ssl/dhp-4096.pem
     fi
   fi
-# Create the default Welcome page BigBlueButton Frontend unless it exists.
-if [[ ! -f /usr/share/bigbluebutton/nginx/default-fe.nginx && ! -f /usr/share/bigbluebutton/nginx/default-fe.nginx.disabled ]]; then
-cat <<HERE > /usr/share/bigbluebutton/nginx/default-fe.nginx
+# Create the default Welcome page BigBlueButton Frontend unless it exists or RGS Management App is serving @bbb-fe.
+if [ "$INSTALL_RGS_APP" != true ] && [ ! -f /etc/bigbluebutton/nginx/rgs-app.nginx ]; then
+  if [[ ! -f /usr/share/bigbluebutton/nginx/default-fe.nginx && ! -f /usr/share/bigbluebutton/nginx/default-fe.nginx.disabled ]]; then
+    cat <<HERE > /usr/share/bigbluebutton/nginx/default-fe.nginx
 # Default BigBlueButton Landing page.
 
 location @bbb-fe {
@@ -1754,6 +1787,7 @@ location @bbb-fe {
 }
 
 HERE
+  fi
 fi
 
   # Configure rest of BigBlueButton Configuration for SSL
