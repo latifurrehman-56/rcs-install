@@ -89,15 +89,20 @@ apt-get update
 echo ""
 if [ "$PKG_NAME" = "ALL_PACKAGES" ]; then
     echo "Upgrading ALL packages from repository..."
-    apt-get upgrade -y
+    apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" dist-upgrade
     STATUS=$?
 else
     echo "Reinstalling latest version of $PKG_NAME from private repo..."
-    apt-get install --reinstall -y "$PKG_NAME"
+    apt-get install --reinstall -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" "$PKG_NAME"
     STATUS=$?
 fi
 
 if [ $STATUS -eq 0 ]; then
+    echo "Resolving any pending DPKG configuration overrides (.dpkg-new/.dpkg-dist)..."
+    find /etc/nginx /etc/bigbluebutton /usr/share/bigbluebutton /var/www -type f -name "*.dpkg-new" -exec sh -c 'mv -f "$1" "${1%.dpkg-new}"' _ {} \; 2>/dev/null || true
+    find /etc/nginx /etc/bigbluebutton /usr/share/bigbluebutton /var/www -type f -name "*.dpkg-dist" -exec sh -c 'mv -f "$1" "${1%.dpkg-dist}"' _ {} \; 2>/dev/null || true
+    systemctl reload nginx 2>/dev/null || true
+
     echo ""
     echo "✅ Successfully updated $PKG_NAME!"
     echo ""

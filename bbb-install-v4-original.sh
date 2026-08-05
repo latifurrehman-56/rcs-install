@@ -138,13 +138,7 @@ HERE
 
 main() {
   export DEBIAN_FRONTEND=noninteractive
-  echo "==============================================================="
-  echo "  Welcome to the RGS Tech Private BigBlueButton Installer"
-  echo "==============================================================="
-  read -p "Enter FTP/Repo Username (e.g. rgs-classes-software): " REPO_USER </dev/tty
-  read -s -p "Enter FTP/Repo Password: " REPO_PASS </dev/tty
-  echo ""
-  PACKAGE_REPOSITORY="${REPO_USER}:${REPO_PASS}@repo.rgstech.center"
+  PACKAGE_REPOSITORY=ubuntu.bigbluebutton.org
   LETS_ENCRYPT_OPTIONS=(--webroot --non-interactive)
   SOURCES_FETCHED=false
   GL3_DIR=~/greenlight-v3
@@ -333,11 +327,6 @@ main() {
   apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" dist-upgrade
 
   need_pkg bigbluebutton
-
-  # Resolve any pending DPKG config file conflicts (.dpkg-new/.dpkg-dist)
-  find /etc/nginx /etc/bigbluebutton /usr/share/bigbluebutton /var/www -type f -name "*.dpkg-new" -exec sh -c 'mv -f "$1" "${1%.dpkg-new}"' _ {} \; 2>/dev/null || true
-  find /etc/nginx /etc/bigbluebutton /usr/share/bigbluebutton /var/www -type f -name "*.dpkg-dist" -exec sh -c 'mv -f "$1" "${1%.dpkg-dist}"' _ {} \; 2>/dev/null || true
-  systemctl reload nginx 2>/dev/null || true
 
   if [ -f /usr/share/bbb-web/WEB-INF/classes/bigbluebutton.properties ]; then
     SERVLET_DIR=/usr/share/bbb-web
@@ -683,7 +672,7 @@ need_pkg() {
   fi
 
   if ! dpkg -s "${@}" >/dev/null 2>&1; then
-    LC_CTYPE=C.UTF-8 apt-get install -yq -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" "${@}"
+    LC_CTYPE=C.UTF-8 apt-get install -yq "${@}"
   fi
   while fuser /var/lib/dpkg/lock >/dev/null 2>&1; do echo "Sleeping for 1 second because of dpkg/lock is in use"; sleep 1; done
   while lsof /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do echo "Sleeping for 1 second because dpkg/lock-frontend in use"; sleep 1; done
@@ -706,11 +695,12 @@ need_ppa() {
 check_version() {
   if ! echo "$1" | grep -Eq "noble-4"; then err "This script can only install BigBlueButton 4.0 and is meant to be run on Ubuntu 24.04 (noble) server."; fi
   DISTRO=${1%%-*}
+  if ! wget -qS --spider "https://$PACKAGE_REPOSITORY/$1/dists/bigbluebutton-$DISTRO/Release.gpg" > /dev/null 2>&1; then
+    err "Unable to locate packages for $1 at $PACKAGE_REPOSITORY."
+  fi
   check_root
-  mkdir -p /etc/apt/auth.conf.d /etc/apt/sources.list.d
-  echo "machine repo.rgstech.center login ${REPO_USER} password ${REPO_PASS}" > /etc/apt/auth.conf.d/rgstech.conf
-  chmod 600 /etc/apt/auth.conf.d/rgstech.conf
-  echo "deb [trusted=yes] https://repo.rgstech.center ./" > /etc/apt/sources.list.d/bigbluebutton.list
+  curl -fsSL "https://$PACKAGE_REPOSITORY/repo/bigbluebutton.asc" | sudo tee /etc/apt/keyrings/bigbluebutton.asc
+  echo "deb [signed-by=/etc/apt/keyrings/bigbluebutton.asc] https://$PACKAGE_REPOSITORY/$VERSION bigbluebutton-$DISTRO main" > /etc/apt/sources.list.d/bigbluebutton.list
 }
 
 check_host() {
@@ -1561,10 +1551,11 @@ install_ssl() {
 
   if [ ! -f "/etc/letsencrypt/live/$HOST/fullchain.pem" ]; then
     rm -f /tmp/bigbluebutton.bak
-    if [ -f /etc/nginx/sites-available/bigbluebutton ]; then
-      cp /etc/nginx/sites-available/bigbluebutton /tmp/bigbluebutton.bak
-    fi
-    cat <<HERE > /etc/nginx/sites-available/bigbluebutton
+    if ! grep -q "$HOST" /etc/nginx/sites-available/bigbluebutton; then  # make sure we can do the challenge
+      if [ -f /etc/nginx/sites-available/bigbluebutton ]; then
+        cp /etc/nginx/sites-available/bigbluebutton /tmp/bigbluebutton.bak
+      fi
+      cat <<HERE > /etc/nginx/sites-available/bigbluebutton
 server_tokens off;
 server {
   listen 80;
@@ -1580,7 +1571,8 @@ server {
   }
 }
 HERE
-    systemctl restart nginx
+      systemctl restart nginx
+    fi
 
     if [ -z "$PROVIDED_CERTIFICATE" ]; then
       if ! certbot --email "$EMAIL" --agree-tos --rsa-key-size 4096 -w /var/www/bigbluebutton-default/assets/ \
