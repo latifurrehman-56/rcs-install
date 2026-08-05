@@ -337,6 +337,7 @@ main() {
   # Resolve any pending DPKG config file conflicts (.dpkg-new/.dpkg-dist)
   find /etc/nginx /etc/bigbluebutton /usr/share/bigbluebutton /var/www -type f -name "*.dpkg-new" -exec sh -c 'mv -f "$1" "${1%.dpkg-new}"' _ {} \; 2>/dev/null || true
   find /etc/nginx /etc/bigbluebutton /usr/share/bigbluebutton /var/www -type f -name "*.dpkg-dist" -exec sh -c 'mv -f "$1" "${1%.dpkg-dist}"' _ {} \; 2>/dev/null || true
+  rm -f /etc/bigbluebutton/nginx/*greenlight*.nginx /usr/share/bigbluebutton/nginx/*greenlight*.nginx /etc/nginx/sites-enabled/*greenlight* /etc/nginx/sites-available/*greenlight* 2>/dev/null || true
   systemctl reload nginx 2>/dev/null || true
 
   if [ -f /usr/share/bbb-web/WEB-INF/classes/bigbluebutton.properties ]; then
