@@ -359,6 +359,17 @@ main() {
 
   need_pkg bigbluebutton
 
+  # If core configuration is missing from disk (due to partial cleaning or directory removal while packages stayed marked as installed), force reinstall all BigBlueButton packages to restore missing files
+  if [ ! -f /usr/share/bbb-web/WEB-INF/classes/bigbluebutton.properties ]; then
+    echo "[⚠️] Core BigBlueButton configuration missing from disk! Reinstalling BBB packages to restore filesystem structure..."
+    INSTALLED_BBB_PKGS=$(dpkg -l | grep -E "^ii  (bbb-|bigbluebutton)" | awk '{print $2}' | tr '\n' ' ')
+    if [ -n "$INSTALLED_BBB_PKGS" ]; then
+      LC_CTYPE=C.UTF-8 apt-get install --reinstall -yq -o Dpkg::Options::="--force-confmiss" -o Dpkg::Options::="--force-confnew" $INSTALLED_BBB_PKGS
+    else
+      LC_CTYPE=C.UTF-8 apt-get install --reinstall -yq -o Dpkg::Options::="--force-confmiss" -o Dpkg::Options::="--force-confnew" bigbluebutton bbb-web bbb-config bbb-webrtc-sfu bbb-html5
+    fi
+  fi
+
   if [ "$INSTALL_RGS_APP" = true ]; then
     echo "[ℹ️] Installing RGS Management App (React Portal & Backend)..."
     need_pkg rgs-management-app
