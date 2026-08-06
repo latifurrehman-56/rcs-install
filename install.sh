@@ -715,7 +715,15 @@ need_pkg() {
     SOURCES_FETCHED=true
   fi
 
-  if ! dpkg -s "${@}" >/dev/null 2>&1; then
+  local install_needed=false
+  for pkg in "${@}"; do
+    if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "install ok installed"; then
+      install_needed=true
+      break
+    fi
+  done
+
+  if [ "$install_needed" = true ]; then
     LC_CTYPE=C.UTF-8 apt-get install -yq -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" "${@}"
   fi
   apt-mark manual "${@}" 2>/dev/null || true
