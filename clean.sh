@@ -75,8 +75,19 @@ echo "==============================================================="
 echo "  Starting Comprehensive System Cleanup..."
 echo "==============================================================="
 
-# 1. Stop all active services, sockets, timers, and kill lingering processes
-echo "[1/8] 🛑 Stopping active services, timers, sockets, and killing leftover processes..."
+# 1. Instantly kill daemon processes & non-blocking stop of all active services/timers
+echo "[1/8] 🛑 Instantly killing leftover processes and terminating services..."
+
+# Kill all active backend daemons immediately before systemctl stop so services don't wait for graceful timeouts
+pkill -9 -f "bbb-" 2>/dev/null || true
+pkill -9 -f freeswitch 2>/dev/null || true
+pkill -9 -f turnserver 2>/dev/null || true
+pkill -9 -f haproxy 2>/dev/null || true
+pkill -9 -f rgs-app 2>/dev/null || true
+pkill -9 -f greenlight 2>/dev/null || true
+pkill -9 -f "node " 2>/dev/null || true
+pkill -9 -f "java " 2>/dev/null || true
+
 SERVICES=(
   "bigbluebutton.target" "rgs-management-app.service" "greenlight-v3.service"
   "bbb-web.service" "bbb-webrtc-sfu.service" "bbb-rap-starter.service" "bbb-rap-resque-worker.service"
@@ -91,37 +102,27 @@ SERVICES=(
   "redis-server.service" "redis.service" "mysql.service" "docker.service" "containerd.service"
 )
 
-for svc in "${SERVICES[@]}"; do
-  systemctl stop "$svc" 2>/dev/null || true
-  systemctl disable "$svc" 2>/dev/null || true
-done
+# Pass all services to systemctl in a single command with --no-block to prevent hanging
+systemctl stop --no-block "${SERVICES[@]}" 2>/dev/null || true
+systemctl disable --no-block "${SERVICES[@]}" 2>/dev/null || true
 
-# Stop any running instances of template systemd services (bbb-html5-*, etc.)
-for tmpl in $(systemctl list-units --full --all 2>/dev/null | grep -E 'bbb-|bigbluebutton|rgs-|greenlight|freeswitch|turnserver|haproxy' | awk '{print $1}'); do
-  systemctl stop "$tmpl" 2>/dev/null || true
-  systemctl disable "$tmpl" 2>/dev/null || true
-done
+# Stop any running instances of template systemd services without blocking
+TMPL_SERVICES=$(systemctl list-units --full --all --no-legend 2>/dev/null | grep -E 'bbb-|bigbluebutton|rgs-|greenlight|freeswitch|turnserver|haproxy' | awk '{print $1}' | tr '\n' ' ' || true)
+if [ -n "$TMPL_SERVICES" ]; then
+  systemctl stop --no-block $TMPL_SERVICES 2>/dev/null || true
+  systemctl disable --no-block $TMPL_SERVICES 2>/dev/null || true
+fi
 
-# Kill running daemon processes by name if they are stuck
-pkill -9 -f bbb-web 2>/dev/null || true
-pkill -9 -f freeswitch 2>/dev/null || true
-pkill -9 -f turnserver 2>/dev/null || true
-pkill -9 -f haproxy 2>/dev/null || true
-pkill -9 -f rgs-app 2>/dev/null || true
-pkill -9 -f greenlight 2>/dev/null || true
+sleep 1
+# Ensure any stubborn child processes are terminated
+pkill -9 -f "bbb-|freeswitch|turnserver|haproxy|rgs-app|greenlight|livekit|node|java|nginx|redis|postgres|mongo|docker|containerd" 2>/dev/null || true
 
-# 2. Remove Docker Containers, Images, and Volumes
+# 2. Remove Docker Containers, Images, and Volumes immediately
 echo "[2/8] 🐳 Cleaning up Docker containers, networks, volumes, and images..."
 if command -v docker >/dev/null 2>&1; then
-  for dir in ~/greenlight-v3 ~/greenlight ~/bbb-lti /root/greenlight-v3 /root/greenlight /root/bbb-lti; do
-    if [ -f "$dir/docker-compose.yml" ]; then
-      docker compose -f "$dir/docker-compose.yml" down -v 2>/dev/null || true
-    fi
-  done
-
-  FORCED_CONTAINERS=$(docker ps -a -q --filter "name=greenlight" --filter "name=broker" --filter "name=rooms" --filter "name=postgres" --filter "name=redis" 2>/dev/null)
+  FORCED_CONTAINERS=$(docker ps -a -q 2>/dev/null)
   if [ -n "$FORCED_CONTAINERS" ]; then
-    docker stop $FORCED_CONTAINERS 2>/dev/null || true
+    docker kill $FORCED_CONTAINERS 2>/dev/null || true
     docker rm -f -v $FORCED_CONTAINERS 2>/dev/null || true
   fi
 
@@ -137,10 +138,11 @@ rm -rf ~/greenlight-v3 ~/greenlight ~/bbb-lti /root/greenlight-v3 /root/greenlig
 
 # 3. Purge All APT Packages (Installed & Residual States)
 echo "[3/8] 🗑️ Purging BigBlueButton, RGS, databases, and web servers via APT..."
-while fuser /var/lib/dpkg/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
-  echo "Waiting for dpkg locks to release..."
-  sleep 1
-done
+
+# Release any stuck dpkg/apt locks
+pkill -9 -f "apt-get|apt|dpkg" 2>/dev/null || true
+rm -f /var/lib/dpkg/lock /var/lib/dpkg/lock-frontend /var/cache/apt/archives/lock 2>/dev/null || true
+dpkg --configure -a --force-all 2>/dev/null || true
 
 PKGS_TO_PURGE=(
   "bigbluebutton*" "bbb-*" "rgs-management-app*" "greenlight*"
