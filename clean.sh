@@ -217,6 +217,15 @@ for u in "${USERS_TO_REMOVE[@]}"; do
   groupdel "$u" 2>/dev/null || true
 done
 
+# Clean up orphaned dpkg statoverride entries for deleted users to prevent dpkg error (code 2) on reinstall
+if [ -f /var/lib/dpkg/statoverride ]; then
+  for u in "${USERS_TO_REMOVE[@]}"; do
+    if ! id -u "$u" >/dev/null 2>&1 && ! getent group "$u" >/dev/null 2>&1; then
+      sed -i -E "/^($u|[^ ]+ $u) /d" /var/lib/dpkg/statoverride 2>/dev/null || true
+    fi
+  done
+fi
+
 # 6. Revert Security Hardening & Remove APT Repositories
 echo "[6/7] 🔓 Reverting system hardening and removing APT repository configurations..."
 

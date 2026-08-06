@@ -324,6 +324,15 @@ main() {
 
   get_IP "$HOST"
 
+  # Clean up any orphaned dpkg statoverride entries for service accounts that no longer exist (prevents dpkg code 2 errors)
+  if [ -f /var/lib/dpkg/statoverride ]; then
+    for u in bigbluebutton freeswitch turnserver haproxy mongodb postgres redis greenlight; do
+      if ! id -u "$u" >/dev/null 2>&1 && ! getent group "$u" >/dev/null 2>&1; then
+        sed -i -E "/^($u|[^ ]+ $u) /d" /var/lib/dpkg/statoverride 2>/dev/null || true
+      fi
+    done
+  fi
+
   #need_ppa martin-uni-mainz-ubuntu-coturn-noble.list ppa:martin-uni-mainz/coturn  4B77C2225D3BBDB3 # Coturn
   #need_ppa martin-uni-mainz-ubuntu-yq-go-noble.list ppa:martin-uni-mainz/yq-go 4B77C2225D3BBDB3 # Edit yaml files with debian's yq-go (mikefarah/yq syntax BBB 3.0 used rather than kislyuk syntax used by the yq tool included in Ubuntu 24.04)
   need_pkg wget curl gpg-agent dirmngr apparmor-utils ca-certificates ruby apt-transport-https haveged openjdk-17-jre dnsutils bbb-yq-go
