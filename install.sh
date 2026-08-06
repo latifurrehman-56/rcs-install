@@ -1619,6 +1619,16 @@ server {
 
   access_log  /var/log/nginx/bigbluebutton.access.log;
 
+  # Allow Let's Encrypt ACME domain verification challenges
+  location ^~ /.well-known/acme-challenge/ {
+    allow all;
+    default_type "text/plain";
+    root /var/www/bigbluebutton-default/assets;
+  }
+  location = /.well-known/acme-challenge/ {
+    return 404;
+  }
+
   # RGS Management App (React Portal) landing page.
   location / {
     root /var/www/rgs-app/frontend/dist;
