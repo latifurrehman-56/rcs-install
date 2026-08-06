@@ -324,15 +324,6 @@ main() {
 
   get_IP "$HOST"
 
-  # Clean up any orphaned dpkg statoverride entries for service accounts that no longer exist (prevents dpkg code 2 errors)
-  if [ -f /var/lib/dpkg/statoverride ]; then
-    for u in bigbluebutton freeswitch turnserver haproxy mongodb postgres redis greenlight; do
-      if ! id -u "$u" >/dev/null 2>&1 && ! getent group "$u" >/dev/null 2>&1; then
-        sed -i -E "/^($u|[^ ]+ $u) /d" /var/lib/dpkg/statoverride 2>/dev/null || true
-      fi
-    done
-  fi
-
   #need_ppa martin-uni-mainz-ubuntu-coturn-noble.list ppa:martin-uni-mainz/coturn  4B77C2225D3BBDB3 # Coturn
   #need_ppa martin-uni-mainz-ubuntu-yq-go-noble.list ppa:martin-uni-mainz/yq-go 4B77C2225D3BBDB3 # Edit yaml files with debian's yq-go (mikefarah/yq syntax BBB 3.0 used rather than kislyuk syntax used by the yq tool included in Ubuntu 24.04)
   need_pkg wget curl gpg-agent dirmngr apparmor-utils ca-certificates ruby apt-transport-https haveged openjdk-17-jre dnsutils bbb-yq-go
@@ -358,17 +349,6 @@ main() {
   apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" dist-upgrade
 
   need_pkg bigbluebutton
-
-  # If core configuration is missing from disk (due to partial cleaning or directory removal while packages stayed marked as installed), force reinstall all BigBlueButton packages to restore missing files
-  if [ ! -f /usr/share/bbb-web/WEB-INF/classes/bigbluebutton.properties ]; then
-    echo "[⚠️] Core BigBlueButton configuration missing from disk! Reinstalling BBB packages to restore filesystem structure..."
-    INSTALLED_BBB_PKGS=$(dpkg -l | grep -E "^ii  (bbb-|bigbluebutton)" | awk '{print $2}' | tr '\n' ' ')
-    if [ -n "$INSTALLED_BBB_PKGS" ]; then
-      LC_CTYPE=C.UTF-8 apt-get install --reinstall -yq -o Dpkg::Options::="--force-confmiss" -o Dpkg::Options::="--force-confnew" $INSTALLED_BBB_PKGS
-    else
-      LC_CTYPE=C.UTF-8 apt-get install --reinstall -yq -o Dpkg::Options::="--force-confmiss" -o Dpkg::Options::="--force-confnew" bigbluebutton bbb-web bbb-config bbb-webrtc-sfu bbb-html5
-    fi
-  fi
 
   if [ "$INSTALL_RGS_APP" = true ]; then
     echo "[ℹ️] Installing RGS Management App (React Portal & Backend)..."
