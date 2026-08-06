@@ -1572,13 +1572,16 @@ install_docker() {
     apt-get purge -y docker-compose
   fi
 
+  # Unconditionally restart containerd and docker to ensure missing directories 
+  # (like /var/lib/containerd/io.containerd.snapshotter.v1.overlayfs) are recreated
+  # after a clean.sh wipe. Otherwise docker build will fail.
+  systemctl restart containerd docker.socket docker.service 2>/dev/null || true
+  sleep 5
+
   # Ensuring docker is running
   if ! docker version > /dev/null ; then
-    # Attempting to auto resolve by restarting docker socket and engine.
-    systemctl restart docker.socket docker.service
-    sleep 5
-
-    docker version > /dev/null || err "docker is failing to restart, something is wrong retry to resolve - exiting"
+    err "docker is failing to restart, something is wrong retry to resolve - exiting"
+  else
     say "docker is running!"
   fi
 
