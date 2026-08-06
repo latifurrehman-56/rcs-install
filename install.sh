@@ -1,5 +1,9 @@
 #!/bin/bash -ex
 
+export DEBIAN_FRONTEND=noninteractive
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+
 # Copyright (c) 2026 BigBlueButton Inc.
 #
 # This program is free software; you can redistribute it and/or modify it under the
