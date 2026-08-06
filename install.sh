@@ -1572,9 +1572,10 @@ install_docker() {
     apt-get purge -y docker-compose
   fi
 
-  # Unconditionally restart containerd and docker to ensure missing directories 
-  # (like /var/lib/containerd/io.containerd.snapshotter.v1.overlayfs) are recreated
-  # after a clean.sh wipe. Otherwise docker build will fail.
+  # Unconditionally recreate missing directories and restart containerd/docker
+  # to guarantee snapshotter structures exist after a clean.sh wipe.
+  mkdir -p /var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots
+  apt-get install --reinstall -y containerd.io docker-ce 2>/dev/null || true
   systemctl restart containerd docker.socket docker.service 2>/dev/null || true
   sleep 5
 
@@ -1613,6 +1614,12 @@ install_ssl() {
     if [ -f /etc/nginx/sites-available/bigbluebutton ]; then
       cp /etc/nginx/sites-available/bigbluebutton /tmp/bigbluebutton.bak
     fi
+
+    # Pre-create webroot with correct permissions so Certbot doesn't create it as root:root
+    # which would cause Nginx (www-data) to return a 404 Forbidden/NotFound.
+    mkdir -p /var/www/bigbluebutton-default/assets
+    chown -R www-data:www-data /var/www/bigbluebutton-default
+
     cat <<HERE > /etc/nginx/sites-available/bigbluebutton
 server_tokens off;
 server {
