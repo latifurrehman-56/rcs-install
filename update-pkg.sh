@@ -43,9 +43,10 @@ while [[ "$#" -gt 0 ]]; do
     -h|--help) usage; exit 0 ;;
     --all|ALL_PACKAGES) TARGET_PKG="ALL_PACKAGES"; shift ;;
     -*) echo "Unknown option: $1"; usage; exit 1 ;;
-    *) TARGET_PKG="$1"; shift ;;
+    *) TARGET_PKG="$TARGET_PKG $1"; shift ;;
   esac
 done
+TARGET_PKG=$(echo "$TARGET_PKG" | xargs)
 
 echo "==============================================================="
 echo "  RGS Tech - Specific Package & Suite Updater (Ubuntu)"
@@ -99,42 +100,48 @@ if [ -z "$TARGET_PKG" ]; then
   echo "15) bbb-playback                  30) ALL PACKAGES (Full RGS & BBB System Upgrade)"
   echo ""
 
-  read -p "Enter the number of the package (1-30): " PKG_NUM </dev/tty
-  PKG_NUM=$(echo "$PKG_NUM" | tr -d '\r ')
+  read -p "Enter the number(s) of the package (1-30, comma or space separated): " PKG_NUM_INPUT </dev/tty
+  PKG_NUM_INPUT=$(echo "$PKG_NUM_INPUT" | tr -d '\r' | tr ',' ' ')
 
-  case $PKG_NUM in
-      1) TARGET_PKG="bbb-apps-akka" ;;
-      2) TARGET_PKG="bbb-config" ;;
-      3) TARGET_PKG="bbb-export-annotations" ;;
-      4) TARGET_PKG="bbb-freeswitch-core" ;;
-      5) TARGET_PKG="bbb-freeswitch-sounds" ;;
-      6) TARGET_PKG="bbb-fsesl-akka" ;;
-      7) TARGET_PKG="bbb-graphql-actions" ;;
-      8) TARGET_PKG="bbb-graphql-middleware" ;;
-      9) TARGET_PKG="bbb-graphql-server" ;;
-      10) TARGET_PKG="bbb-html5" ;;
-      11) TARGET_PKG="bbb-learning-dashboard" ;;
-      12) TARGET_PKG="bbb-libreoffice-docker" ;;
-      13) TARGET_PKG="bbb-livekit" ;;
-      14) TARGET_PKG="bbb-mkclean" ;;
-      15) TARGET_PKG="bbb-playback" ;;
-      16) TARGET_PKG="bbb-playback-notes" ;;
-      17) TARGET_PKG="bbb-playback-podcast" ;;
-      18) TARGET_PKG="bbb-playback-presentation" ;;
-      19) TARGET_PKG="bbb-playback-screenshare" ;;
-      20) TARGET_PKG="bbb-playback-video" ;;
-      21) TARGET_PKG="bbb-record-core" ;;
-      22) TARGET_PKG="bbb-transcription-controller" ;;
-      23) TARGET_PKG="bbb-web" ;;
-      24) TARGET_PKG="bbb-webhooks" ;;
-      25) TARGET_PKG="bbb-webrtc-recorder" ;;
-      26) TARGET_PKG="bbb-webrtc-sfu" ;;
-      27) TARGET_PKG="bbb-yq-go" ;;
-      28) TARGET_PKG="bigbluebutton" ;;
-      29) TARGET_PKG="rgs-management-app" ;;
-      30) TARGET_PKG="ALL_PACKAGES" ;;
-      *) echo "❌ Invalid selection ($PKG_NUM)! Aborting."; exit 1 ;;
-  esac
+  for PKG_NUM in $PKG_NUM_INPUT; do
+    case $PKG_NUM in
+        1) PKG="bbb-apps-akka" ;;
+        2) PKG="bbb-config" ;;
+        3) PKG="bbb-export-annotations" ;;
+        4) PKG="bbb-freeswitch-core" ;;
+        5) PKG="bbb-freeswitch-sounds" ;;
+        6) PKG="bbb-fsesl-akka" ;;
+        7) PKG="bbb-graphql-actions" ;;
+        8) PKG="bbb-graphql-middleware" ;;
+        9) PKG="bbb-graphql-server" ;;
+        10) PKG="bbb-html5" ;;
+        11) PKG="bbb-learning-dashboard" ;;
+        12) PKG="bbb-libreoffice-docker" ;;
+        13) PKG="bbb-livekit" ;;
+        14) PKG="bbb-mkclean" ;;
+        15) PKG="bbb-playback" ;;
+        16) PKG="bbb-playback-notes" ;;
+        17) PKG="bbb-playback-podcast" ;;
+        18) PKG="bbb-playback-presentation" ;;
+        19) PKG="bbb-playback-screenshare" ;;
+        20) PKG="bbb-playback-video" ;;
+        21) PKG="bbb-record-core" ;;
+        22) PKG="bbb-transcription-controller" ;;
+        23) PKG="bbb-web" ;;
+        24) PKG="bbb-webhooks" ;;
+        25) PKG="bbb-webrtc-recorder" ;;
+        26) PKG="bbb-webrtc-sfu" ;;
+        27) PKG="bbb-yq-go" ;;
+        28) PKG="bigbluebutton" ;;
+        29) PKG="rgs-management-app" ;;
+        30) TARGET_PKG="ALL_PACKAGES"; break ;;
+        *) echo "❌ Invalid selection ($PKG_NUM)! Aborting."; exit 1 ;;
+    esac
+    if [ "$TARGET_PKG" != "ALL_PACKAGES" ]; then
+      TARGET_PKG="$TARGET_PKG $PKG"
+    fi
+  done
+  TARGET_PKG=$(echo "$TARGET_PKG" | xargs)
 fi
 
 echo ""
@@ -156,7 +163,7 @@ if [ "$TARGET_PKG" = "ALL_PACKAGES" ]; then
   STATUS=$?
 else
   echo "[🔄] Reinstalling / updating latest version of '$TARGET_PKG'..."
-  apt-get install --reinstall -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" "$TARGET_PKG"
+  apt-get install --reinstall -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confnew" $TARGET_PKG
   STATUS=$?
 fi
 
